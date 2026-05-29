@@ -1,0 +1,60 @@
+def plot_clustered_categorical(datasets, col, normalize=True):
+    
+    rows = []
+
+    for model_name, df in datasets.items():
+
+        temp = (
+            df[col]
+            .astype(str)
+            .fillna("MISSING")
+            .value_counts(dropna=False)
+            .rename("count")
+            .reset_index()
+        )
+
+        temp.columns = ["level", "count"]
+
+        temp["value"] = (
+            temp["count"] / len(df) * 100
+            if normalize
+            else temp["count"]
+        )
+
+        temp["model"] = model_name
+
+        rows.append(temp)
+
+    plot_df = pd.concat(rows)
+
+    chart_df = (
+        plot_df
+        .pivot(index="level", columns="model", values="value")
+        .fillna(0)
+    )
+
+    ax = chart_df.plot(
+        kind="bar",
+        figsize=(12, 5),
+        width=0.8
+    )
+
+    ax.set_title(col)
+    ax.set_ylabel("Percent" if normalize else "Count")
+
+    for container in ax.containers:
+        ax.bar_label(container, fmt="%.1f", fontsize=8)
+
+    plt.tight_layout()
+    plt.show()
+
+----
+for col in categorical_cols:
+    plot_clustered_categorical(
+        datasets={
+            "All Model": all_model,
+            "Funded Model": funded_model
+        },
+        col=col,
+        normalize=True
+    )
