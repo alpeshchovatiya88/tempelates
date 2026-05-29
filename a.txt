@@ -1,106 +1,51 @@
-import pandas as pd
 import matplotlib.pyplot as plt
 
-
-def plot_bad_rate_clustered(
+def plot_bad_rate_clustered_wide(
     data,
-    features=None,
-    models=None,
+    features,
     feature_col="Feature",
     level_col="Level",
-    model_col="Model",
-    rate_col="bad_rate_pct",
-    count_col="count",
     top_n=20,
-    sort_by="max_rate",
     figsize=(14, 5),
-    rotation=45,
-    show_counts=True
+    rotation=45
 ):
-    """
-    Creates clustered column charts:
-    Level A -> All Model + Funded Model side by side
-    Level B -> All Model + Funded Model side by side
-    """
-
-    plot_data = data.copy()
-
-    if features is None:
-        features = plot_data[feature_col].unique()
-
-    if models is None:
-        models = plot_data[model_col].unique()
 
     for feature in features:
 
-        temp = plot_data[plot_data[feature_col] == feature].copy()
+        temp = data[data[feature_col] == feature].copy()
 
         if temp.empty:
             continue
 
-        temp = temp[temp[model_col].isin(models)]
+        temp = temp.sort_values(
+            "All_model_bad_rate",
+            ascending=False
+        ).head(top_n)
 
-        pivot_rate = (
-            temp
-            .pivot_table(
-                index=level_col,
-                columns=model_col,
-                values=rate_col,
-                aggfunc="first"
-            )
-            .fillna(0)
-        )
+        chart_df = temp.set_index(level_col)[
+            [
+                "All_model_bad_rate",
+                "Funded_model_bad_rate"
+            ]
+        ]
 
-        pivot_count = (
-            temp
-            .pivot_table(
-                index=level_col,
-                columns=model_col,
-                values=count_col,
-                aggfunc="first"
-            )
-            .fillna(0)
-        )
-
-        if sort_by == "max_rate":
-            order = pivot_rate.max(axis=1).sort_values(ascending=False).index
-        elif sort_by == "count":
-            order = pivot_count.sum(axis=1).sort_values(ascending=False).index
-        else:
-            order = pivot_rate.index
-
-        order = order[:top_n]
-
-        pivot_rate = pivot_rate.loc[order]
-        pivot_count = pivot_count.loc[order]
-
-        ax = pivot_rate.plot(
+        ax = chart_df.plot(
             kind="bar",
             figsize=figsize,
             width=0.8
         )
 
-        ax.set_title(f"{feature} vs Target Bad Rate")
+        ax.set_title(f"{feature} Bad Rate Comparison")
         ax.set_xlabel(feature)
-        ax.set_ylabel("Bad Rate (%)")
-        ax.tick_params(axis="x", rotation=rotation)
+        ax.set_ylabel("Bad Rate")
 
-        max_value = pivot_rate.to_numpy().max()
+        max_value = chart_df.to_numpy().max()
 
-        for i, container in enumerate(ax.containers):
-            model_name = pivot_rate.columns[i]
-
-            labels = []
-            for level, rate in zip(pivot_rate.index, container.datavalues):
-                count = pivot_count.loc[level, model_name]
-
-                if rate > max_value * 0.03:
-                    if show_counts:
-                        labels.append(f"{rate:.1f}%\n(n={count:,.0f})")
-                    else:
-                        labels.append(f"{rate:.1f}%")
-                else:
-                    labels.append("")
+        for container in ax.containers:
+            labels = [
+                f"{v:.2%}" if v > max_value * 0.03 else ""
+                for v in container.datavalues
+            ]
 
             ax.bar_label(
                 container,
@@ -109,20 +54,16 @@ def plot_bad_rate_clustered(
                 fontsize=8
             )
 
-        plt.legend(title="Model")
+        plt.xticks(rotation=rotation, ha="right")
+        plt.legend(["All Model", "Funded Model"])
         plt.tight_layout()
         plt.show()
 
-----
-
-plot_bad_rate_clustered(
-    data=cat_target_rel,
+---
+plot_bad_rate_clustered_wide(
+    data=cat_target_final,
     features=important_categorical,
-    models=["all_model", "funded_model"],
-    feature_col="feature",
-    level_col="level",
-    model_col="model",
-    rate_col="bad_rate_pct",
-    count_col="count",
+    feature_col="Feature",
+    level_col="Level",
     top_n=20
 )
