@@ -1,13 +1,16 @@
-import matplotlib.pyplot as plt
-
 def plot_bad_rate_clustered_wide(
     data,
     features,
     feature_col="Feature",
     level_col="Level",
+    all_rate_col="All_model_bad_rate",
+    funded_rate_col="Funded_model_bad_rate",
+    all_count_col="All_model_count",
+    funded_count_col="Funded_model_count",
     top_n=20,
-    figsize=(14, 5),
-    rotation=45
+    figsize=(16, 6),
+    rotation=45,
+    rate_is_percent=False
 ):
 
     for feature in features:
@@ -18,14 +21,14 @@ def plot_bad_rate_clustered_wide(
             continue
 
         temp = temp.sort_values(
-            "All_model_bad_rate",
+            all_rate_col,
             ascending=False
         ).head(top_n)
 
         chart_df = temp.set_index(level_col)[
             [
-                "All_model_bad_rate",
-                "Funded_model_bad_rate"
+                all_rate_col,
+                funded_rate_col
             ]
         ]
 
@@ -37,33 +40,66 @@ def plot_bad_rate_clustered_wide(
 
         ax.set_title(f"{feature} Bad Rate Comparison")
         ax.set_xlabel(feature)
-        ax.set_ylabel("Bad Rate")
+        ax.set_ylabel("Bad Rate (%)")
+        ax.tick_params(axis="x", rotation=rotation)
 
-        max_value = chart_df.to_numpy().max()
+        for i, container in enumerate(ax.containers):
 
-        for container in ax.containers:
-            labels = [
-                f"{v:.2%}" if v > max_value * 0.03 else ""
-                for v in container.datavalues
-            ]
+            if i == 0:
+                counts = temp[all_count_col].values
+            else:
+                counts = temp[funded_count_col].values
+
+            labels = []
+
+            for rate, count in zip(container.datavalues, counts):
+                if rate_is_percent:
+                    labels.append(f"{rate:.1f}%\n(n={count:,.0f})")
+                else:
+                    labels.append(f"{rate:.1%}\n(n={count:,.0f})")
 
             ax.bar_label(
                 container,
                 labels=labels,
                 padding=3,
-                fontsize=8
+                fontsize=8,
+                rotation=90
             )
 
-        plt.xticks(rotation=rotation, ha="right")
         plt.legend(["All Model", "Funded Model"])
+        plt.xticks(rotation=rotation, ha="right")
         plt.tight_layout()
         plt.show()
 
----
+-----
+
 plot_bad_rate_clustered_wide(
     data=cat_target_final,
     features=important_categorical,
     feature_col="Feature",
     level_col="Level",
-    top_n=20
+    top_n=20,
+    rate_is_percent=False
 )
+
+----
+
+plot_bad_rate_clustered_wide(
+    data=cat_target_final,
+    features=important_categorical,
+    feature_col="Feature",
+    level_col="Level",
+    top_n=20,
+    rate_is_percent=True
+)
+
+
+
+
+
+
+
+
+
+
+
