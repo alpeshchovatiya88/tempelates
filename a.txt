@@ -58,3 +58,122 @@ for col in categorical_cols:
         col=col,
         normalize=True
     )
+----
+import pandas as pd
+import numpy as np
+
+
+def categorical_target_summary(
+    datasets,
+    features,
+    target_col="target",
+    min_count=100,
+    missing_label="MISSING"
+):
+    """
+    datasets example:
+        {
+            "All_model": all_model,
+            "Funded_model": funded_model
+        }
+    """
+
+    rows = []
+
+    for model_name, data in datasets.items():
+
+        for col in features:
+
+            temp = data[[col, target_col]].copy()
+            temp = temp[temp[target_col].notna()]
+            temp[col] = temp[col].astype("object").fillna(missing_label)
+
+            grouped = (
+                temp
+                .groupby(col)
+                .agg(
+                    count=(target_col, "size"),
+                    bad_count=(target_col, "sum"),
+                    bad_rate=(target_col, "mean")
+                )
+                .reset_index()
+                .rename(columns={col: "Level"})
+            )
+
+            grouped = grouped[grouped["count"] >= min_count].copy()
+            grouped["Feature"] = col
+            grouped["Model"] = model_name
+
+            rows.append(grouped)
+
+    long_df = pd.concat(rows, ignore_index=True)
+
+    final_df = (
+        long_df
+        .pivot_table(
+            index=["Feature", "Level"],
+            columns="Model",
+            values=["count", "bad_count", "bad_rate"],
+            aggfunc="first"
+        )
+    )
+
+    final_df.columns = [
+        f"{model}_{metric}"
+        for metric, model in final_df.columns
+    ]
+
+    final_df = final_df.reset_index()
+
+    # Ensure required columns exist
+    required_cols = [
+        "All_model_count",
+        "All_model_bad_count",
+        "All_model_bad_rate",
+        "Funded_model_count",
+        "Funded_model_bad_count",
+        "Funded_model_bad_rate",
+    ]
+
+    for c in required_cols:
+        if c not in final_df.columns:
+            final_df[c] = np.nan
+
+    final_df["Diff_bad_count"] = (
+        final_df["Funded_model_bad_count"] - final_df["All_model_bad_count"]
+    )
+
+    final_df["Diff_bad_rate"] = (
+        final_df["Funded_model_bad_rate"] - final_df["All_model_bad_rate"]
+    )
+
+    final_df = final_df[
+        [
+            "Feature",
+            "Level",
+            "All_model_count",
+            "All_model_bad_count",
+            "All_model_bad_rate",
+            "Funded_model_count",
+            "Funded_model_bad_count",
+            "Funded_model_bad_rate",
+            "Diff_bad_count",
+            "Diff_bad_rate",
+        ]
+    ]
+
+    return final_df
+
+-----
+
+cat_target_final = categorical_target_summary(
+    datasets={
+        "All_model": all_model,
+        "Funded_model": funded_model
+    },
+    features=categorical_cols,
+    target_col="target",
+    min_count=100
+)
+
+display(cat_target_final)
