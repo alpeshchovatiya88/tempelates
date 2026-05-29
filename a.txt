@@ -8,7 +8,7 @@ def plot_bad_rate_clustered_wide(
     all_count_col="All_model_count",
     funded_count_col="Funded_model_count",
     top_n=20,
-    figsize=(16, 6),
+    figsize=(20, 8),
     rotation=45,
     rate_is_percent=False
 ):
@@ -35,13 +35,20 @@ def plot_bad_rate_clustered_wide(
         ax = chart_df.plot(
             kind="bar",
             figsize=figsize,
-            width=0.8
+            width=0.7
         )
 
-        ax.set_title(f"{feature} Bad Rate Comparison")
-        ax.set_xlabel(feature)
-        ax.set_ylabel("Bad Rate (%)")
-        ax.tick_params(axis="x", rotation=rotation)
+        ax.set_title(
+            f"{feature} - Bad Rate Comparison",
+            fontsize=16,
+            fontweight="bold"
+        )
+
+        ax.set_xlabel(feature, fontsize=12)
+        ax.set_ylabel("Bad Rate (%)", fontsize=12)
+
+        max_rate = chart_df.to_numpy().max()
+        ax.set_ylim(0, max_rate * 1.35)
 
         for i, container in enumerate(ax.containers):
 
@@ -53,21 +60,35 @@ def plot_bad_rate_clustered_wide(
             labels = []
 
             for rate, count in zip(container.datavalues, counts):
+
                 if rate_is_percent:
-                    labels.append(f"{rate:.1f}%\n(n={count:,.0f})")
+                    label = f"{rate:.1f}% | n={count:,.0f}"
                 else:
-                    labels.append(f"{rate:.1%}\n(n={count:,.0f})")
+                    label = f"{rate:.1%} | n={count:,.0f}"
+
+                labels.append(label)
 
             ax.bar_label(
                 container,
                 labels=labels,
-                padding=3,
-                fontsize=8,
-                rotation=90
+                padding=4,
+                fontsize=10
             )
 
-        plt.legend(["All Model", "Funded Model"])
-        plt.xticks(rotation=rotation, ha="right")
+        ax.legend(
+            ["All Model", "Funded Model"],
+            title="Model",
+            fontsize=10
+        )
+
+        plt.xticks(
+            rotation=rotation,
+            ha="right",
+            fontsize=10
+        )
+
+        plt.yticks(fontsize=10)
+
         plt.tight_layout()
         plt.show()
 
@@ -76,24 +97,12 @@ def plot_bad_rate_clustered_wide(
 plot_bad_rate_clustered_wide(
     data=cat_target_final,
     features=important_categorical,
-    feature_col="Feature",
-    level_col="Level",
+    feature_col="Feature",   # use "feature" if your column is lowercase
+    level_col="Level",       # use "level" if your column is lowercase
     top_n=20,
-    rate_is_percent=False
+    figsize=(20, 8),
+    rate_is_percent=False    # True if bad rates are already 12.5 instead of 0.125
 )
-
-----
-
-plot_bad_rate_clustered_wide(
-    data=cat_target_final,
-    features=important_categorical,
-    feature_col="Feature",
-    level_col="Level",
-    top_n=20,
-    rate_is_percent=True
-)
-
-
 
 
 
